@@ -67,8 +67,8 @@ public class SigninActivity extends AppCompatActivity implements View.OnClickLis
     private List<String> needpermissions = Arrays.asList("email","public_profile");
 
     // Note: Your consumer key and secret should be obfuscated in your source code before shipping.
-    private static final String TWITTER_KEY = "LvgvJXceCtmKlDeeIuwAhH6UG";
-    private static final String TWITTER_SECRET = "	SIpOcBfggkqdVkpYONC3bqyThETKV0qP6BJSsg5UD6RXsBPXt6";
+    private static final String TWITTER_KEY = "twitter_key";
+    private static final String TWITTER_SECRET = "twitter_secret_key";
     private TwitterAuthClient twitterClient;
 
     @Override
