@@ -42,7 +42,7 @@
 
         <meta-data
             android:name="io.fabric.ApiKey"
-            android:value="50ac5b1097184ea1c282066a89dca5a51e550be9"
+            android:value="Twitter API Key"
             />
 
     </application>
