@@ -30,4 +30,16 @@
         android:id="@+id/signout"
         android:text="@string/signout"/>
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/post_fb"
+        android:text="@string/post"
+        android:visibility="gone"/>
+
+    <ListView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/lstview"></ListView>
+
 </LinearLayout>

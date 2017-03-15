@@ -8,6 +8,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import com.facebook.AccessToken;
@@ -15,6 +16,9 @@ import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
+import com.facebook.GraphRequest;
+import com.facebook.GraphResponse;
+import com.facebook.HttpMethod;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.google.android.gms.auth.api.Auth;
@@ -43,7 +47,13 @@ import com.twitter.sdk.android.core.TwitterException;
 import com.twitter.sdk.android.core.TwitterSession;
 import com.twitter.sdk.android.core.identity.TwitterAuthClient;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import io.fabric.sdk.android.Fabric;
@@ -55,20 +65,25 @@ import io.fabric.sdk.android.Fabric;
 public class SigninActivity extends AppCompatActivity implements View.OnClickListener, GoogleApiClient.OnConnectionFailedListener {
 
     private FirebaseAuth firebaseAuth;
-    private Button signin_btn,signout_btn;
+    private Button signin_btn,signout_btn,post_btn;
     private GoogleApiClient googleApiClient;
     private EditText emailtxt,passtxt;
+    private ListView listView;
     private static final String TAG = "SigninActivity";
     private FirebaseAuth.AuthStateListener listener;
     private int type;
     private final int Google_R_CODE = 2;
     private CallbackManager callbackManager;
 
-    private List<String> needpermissions = Arrays.asList("email","public_profile");
+    private List<String> post_list = new ArrayList<>();
+
+    private List<String> needpermissions = Arrays.asList("email","public_profile","user_posts");
+
+    private List<String> writepermissions = Arrays.asList("publish_actions");
 
     // Note: Your consumer key and secret should be obfuscated in your source code before shipping.
     private static final String TWITTER_KEY = "LvgvJXceCtmKlDeeIuwAhH6UG";
-    private static final String TWITTER_SECRET = "	SIpOcBfggkqdVkpYONC3bqyThETKV0qP6BJSsg5UD6RXsBPXt6";
+    private static final String TWITTER_SECRET = "SIpOcBfggkqdVkpYONC3bqyThETKV0qP6BJSsg5UD6RXsBPXt6";
     private TwitterAuthClient twitterClient;
 
     @Override
@@ -85,11 +100,14 @@ public class SigninActivity extends AppCompatActivity implements View.OnClickLis
         emailtxt = (EditText)findViewById(R.id.email);
         passtxt = (EditText)findViewById(R.id.password);
         signout_btn = (Button)findViewById(R.id.signout);
+        listView = (ListView)findViewById(R.id.lstview);
+        post_btn = (Button)findViewById(R.id.post_fb);
 
         firebaseAuth = FirebaseAuth.getInstance();
 
         signin_btn.setOnClickListener(this);
         signout_btn.setOnClickListener(this);
+        post_btn.setOnClickListener(this);
 
         type = getIntent().getExtras().getInt("Type");
 
@@ -111,6 +129,13 @@ public class SigninActivity extends AppCompatActivity implements View.OnClickLis
                 FirebaseUser user = firebaseAuth.getCurrentUser();
                 if(user!=null){
                     Log.d(TAG, "onAuthStateChanged:signed_in:" + user.getUid());
+                    signin_btn.setVisibility(View.GONE);
+                    signout_btn.setVisibility(View.VISIBLE);
+                    if(type == R.string.facebook){
+                        post_btn.setVisibility(View.VISIBLE);
+                        emailtxt.setVisibility(View.VISIBLE);
+                        setListview();
+                    }
                 } else{
                     Log.d(TAG, "onAuthStateChanged:signed_out");
                 }
@@ -129,7 +154,23 @@ public class SigninActivity extends AppCompatActivity implements View.OnClickLis
             sign_in();
         } else if(view.getId() == signout_btn.getId()){
             sign_out();
+        } else if(view.getId() == post_btn.getId()){
+            post_feed();
         }
+    }
+
+    private void post_feed() {
+        Bundle param = new Bundle();
+        param.putString("message",emailtxt.getText().toString());
+        Log.d(TAG,"Tokeeennn: "+AccessToken.getCurrentAccessToken());
+        new GraphRequest(AccessToken.getCurrentAccessToken(), "/me/feed", param, HttpMethod.POST, new GraphRequest.Callback() {
+            @Override
+            public void onCompleted(GraphResponse response) {
+                Log.d(TAG,"Post on complete is true");
+                Toast.makeText(SigninActivity.this,"Posted to fb",Toast.LENGTH_LONG).show();
+            }
+        }).executeAsync();
+
     }
 
     private void sign_in() {
@@ -207,6 +248,7 @@ public class SigninActivity extends AppCompatActivity implements View.OnClickLis
 
     private void signWithFacebook() {
         LoginManager.getInstance().logInWithReadPermissions(this,needpermissions);
+        LoginManager.getInstance().logInWithPublishPermissions(this,writepermissions);
         LoginManager.getInstance().registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
             @Override
             public void onSuccess(LoginResult loginResult) {
@@ -241,9 +283,53 @@ public class SigninActivity extends AppCompatActivity implements View.OnClickLis
                 Toast.makeText(SigninActivity.this, "Authentication Success.", Toast.LENGTH_LONG).show();
                 signin_btn.setVisibility(View.GONE);
                 signout_btn.setVisibility(View.VISIBLE);
+                post_btn.setVisibility(View.VISIBLE);
+                emailtxt.setVisibility(View.VISIBLE);
             }
         });
+
+        setListview();
+
     }
+
+    private void setListview(){
+        new GraphRequest(AccessToken.getCurrentAccessToken(), "/me/feed", null, HttpMethod.GET, new GraphRequest.Callback() {
+            @Override
+            public void onCompleted(GraphResponse response) {
+                post_list.clear();
+                Log.d(TAG,"Feeds: "+response.toString());
+                JSONObject object = response.getJSONObject();
+                JSONArray jsonArray;
+                Log.d(TAG,"ACCESSTOKEENN: "+AccessToken.getCurrentAccessToken());
+                try {
+                    jsonArray = object.getJSONArray("data");
+                    int get = jsonArray.length();
+                    for(int i=0;i<jsonArray.length();i++){
+                        JSONObject post = jsonArray.getJSONObject(i);
+                        Iterator iterator = post.keys();
+                        while(iterator.hasNext()){
+                            String key = (String)iterator.next();
+                            if(key.equals("message")){
+                                String str = post.getString("message");
+                                post_list.add(str);
+                                Log.d(TAG,"YOYOY: "+post.getString("message"));
+                            }
+                        }
+                    }
+                    Log.d(TAG,"YOYOYO: "+jsonArray.toString());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                CustomAdapter  adapter = new CustomAdapter(SigninActivity.this,post_list);
+                listView.setAdapter(adapter);
+            }
+        }).executeAsync();
+
+
+
+    }
+
 
     private void signWithGoogle() {
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -288,6 +374,8 @@ public class SigninActivity extends AppCompatActivity implements View.OnClickLis
             if(callbackManager!=null){
                 LoginManager.getInstance().logOut();
                 Toast.makeText(SigninActivity.this,"Successfully logged out Facebook",Toast.LENGTH_LONG).show();
+                post_btn.setVisibility(View.GONE);
+                emailtxt.setVisibility(View.GONE);
             }
         }else if(type == R.string.google){
             if(googleApiClient!=null){

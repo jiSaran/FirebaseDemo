@@ -11,5 +11,6 @@
     <string name="signout">Sign Out</string>
     <string name="facebook_app_id">616208608562898</string>
     <string name="fb_login_protocol_scheme">fb616208608562898</string>
+    <string name="post">Post in fb</string>
 
 </resources>
